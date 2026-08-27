@@ -2,19 +2,15 @@
 
 set -Eeuo pipefail
 
-log() {
-    printf '[%s] [INFO] %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$*"
-}
-
-error() {
-    printf '[%s] [ERROR] %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$*" >&2
-}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${PG_BACKUP_LIB_DIR:-${SCRIPT_DIR}/lib}/logging.sh"
+readonly LOG_COMPONENT='pg-restore'
 
 require_env() {
     local name="$1"
 
     if [[ -z "${!name:-}" ]]; then
-        error "Required environment variable '$name' is not set."
+        log::error "$LOG_COMPONENT" "Required environment variable '$name' is not set."
         exit 1
     fi
 }
@@ -22,7 +18,7 @@ require_env() {
 load_password() {
     if [[ -n "${PGPASSWORD_FILE:-}" ]]; then
         if [[ ! -r "$PGPASSWORD_FILE" ]]; then
-            error "PGPASSWORD_FILE is not readable: $PGPASSWORD_FILE"
+            log::error "$LOG_COMPONENT" "PGPASSWORD_FILE is not readable: $PGPASSWORD_FILE"
             exit 1
         fi
 
@@ -34,12 +30,12 @@ load_password() {
 DUMP_FILE="${1:-}"
 
 if [[ -z "$DUMP_FILE" ]]; then
-    error "Usage: pg-restore /path/to/backup.dump"
+    log::error "$LOG_COMPONENT" "Usage: pg-restore /path/to/backup.dump"
     exit 1
 fi
 
 if [[ ! -f "$DUMP_FILE" ]]; then
-    error "Backup file not found: $DUMP_FILE"
+    log::error "$LOG_COMPONENT" "Backup file not found: $DUMP_FILE"
     exit 1
 fi
 
@@ -54,9 +50,9 @@ load_password
 
 export PGCONNECT_TIMEOUT
 
-log "Starting PostgreSQL restore."
-log "Target: ${PGHOST}:${PGPORT}/${PGDATABASE}"
-log "Backup file: ${DUMP_FILE}"
+log::info "$LOG_COMPONENT" "Starting PostgreSQL restore."
+log::info "$LOG_COMPONENT" "Target: ${PGHOST}:${PGPORT}/${PGDATABASE}"
+log::info "$LOG_COMPONENT" "Backup file: ${DUMP_FILE}"
 
 if ! pg_isready \
     --host="$PGHOST" \
@@ -66,11 +62,11 @@ if ! pg_isready \
     --timeout="$PGCONNECT_TIMEOUT" \
     >/dev/null 2>&1; then
 
-    error "PostgreSQL is not ready at ${PGHOST}:${PGPORT}."
+    log::error "$LOG_COMPONENT" "PostgreSQL is not ready at ${PGHOST}:${PGPORT}."
     exit 1
 fi
 
-log "Terminating active connections to database '${PGDATABASE}'."
+log::info "$LOG_COMPONENT" "Terminating active connections to database '${PGDATABASE}'."
 
 psql \
     --host="$PGHOST" \
@@ -87,7 +83,7 @@ WHERE datname = :'db_name'
   AND pid <> pg_backend_pid();
 SQL
 
-log "Dropping database '${PGDATABASE}' if it exists."
+log::info "$LOG_COMPONENT" "Dropping database '${PGDATABASE}' if it exists."
 
 dropdb \
     --host="$PGHOST" \
@@ -96,7 +92,7 @@ dropdb \
     --if-exists \
     "$PGDATABASE"
 
-log "Creating database '${PGDATABASE}'."
+log::info "$LOG_COMPONENT" "Creating database '${PGDATABASE}'."
 
 createdb \
     --host="$PGHOST" \
@@ -106,7 +102,7 @@ createdb \
 
 case "$DUMP_FILE" in
     *.sql)
-        log "Detected plain SQL backup."
+        log::info "$LOG_COMPONENT" "Detected plain SQL backup."
 
         psql \
             --host="$PGHOST" \
@@ -119,7 +115,7 @@ case "$DUMP_FILE" in
         ;;
 
     *)
-        log "Restoring PostgreSQL custom-format backup."
+        log::info "$LOG_COMPONENT" "Restoring PostgreSQL custom-format backup."
 
         pg_restore \
             --host="$PGHOST" \
@@ -133,4 +129,4 @@ case "$DUMP_FILE" in
         ;;
 esac
 
-log "Restore completed successfully."
+log::info "$LOG_COMPONENT" "Restore completed successfully."

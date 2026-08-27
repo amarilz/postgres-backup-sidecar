@@ -2,13 +2,9 @@
 
 set -Eeuo pipefail
 
-log() {
-    printf '[%s] [INFO] %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$*"
-}
-
-error() {
-    printf '[%s] [ERROR] %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$*" >&2
-}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${PG_BACKUP_LIB_DIR:-${SCRIPT_DIR}/lib}/logging.sh"
+readonly LOG_COMPONENT='entrypoint'
 
 is_true() {
     case "${1,,}" in
@@ -43,7 +39,7 @@ validate_positive_integer() {
     local name="$2"
 
     if ! [[ "$value" =~ ^[0-9]+$ ]] || (( value <= 0 )); then
-        error "$name must be a positive integer. Current value: $value"
+        log::error "$LOG_COMPONENT" "$name must be a positive integer. Current value: $value"
         exit 1
     fi
 }
@@ -60,7 +56,7 @@ SLEEP_PID=""
 
 run_backup() {
     if ! /usr/local/bin/pg-backup; then
-        error "Backup failed. The container will continue running."
+        log::error "$LOG_COMPONENT" "Backup failed. The container will continue running."
         return 1
     fi
 
@@ -68,7 +64,7 @@ run_backup() {
 }
 
 shutdown() {
-    log "Shutdown signal received."
+    log::info "$LOG_COMPONENT" "Shutdown signal received."
 
     if [[ -n "${SLEEP_PID}" ]]; then
         kill "${SLEEP_PID}" 2>/dev/null || true
@@ -77,26 +73,26 @@ shutdown() {
     fi
 
     if is_true "$BACKUP_ON_SHUTDOWN"; then
-        log "Running final backup before shutdown."
+        log::info "$LOG_COMPONENT" "Running final backup before shutdown."
 
         if ! run_backup; then
-            error "Final backup failed."
+            log::error "$LOG_COMPONENT" "Final backup failed."
         fi
     fi
 
-    log "Backup service stopped."
+    log::info "$LOG_COMPONENT" "Backup service stopped."
     exit 0
 }
 
 trap shutdown SIGTERM SIGINT
 
-log "PostgreSQL backup service starting."
-log "Backup interval: ${INTERVAL} seconds."
-log "Backup directory: ${BACKUP_DIR:-/backups}."
-log "Backup retention: ${BACKUP_RETENTION_DAYS:-14} days."
+log::info "$LOG_COMPONENT" "PostgreSQL backup service starting."
+log::info "$LOG_COMPONENT" "Backup interval: ${INTERVAL} seconds."
+log::info "$LOG_COMPONENT" "Backup directory: ${BACKUP_DIR:-/backups}."
+log::info "$LOG_COMPONENT" "Backup retention: ${BACKUP_RETENTION_DAYS:-14} days."
 
 if is_true "$BACKUP_ON_START"; then
-    log "Running initial backup."
+    log::info "$LOG_COMPONENT" "Running initial backup."
     run_backup || true
 fi
 

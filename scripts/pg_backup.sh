@@ -2,19 +2,15 @@
 
 set -Eeuo pipefail
 
-log() {
-    printf '[%s] [INFO] %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$*"
-}
-
-error() {
-    printf '[%s] [ERROR] %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$*" >&2
-}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${PG_BACKUP_LIB_DIR:-${SCRIPT_DIR}/lib}/logging.sh"
+readonly LOG_COMPONENT='pg-backup'
 
 require_env() {
     local name="$1"
 
     if [[ -z "${!name:-}" ]]; then
-        error "Required environment variable '$name' is not set."
+        log::error "$LOG_COMPONENT" "Required environment variable '$name' is not set."
         exit 1
     fi
 }
@@ -24,7 +20,7 @@ validate_non_negative_integer() {
     local name="$2"
 
     if ! [[ "$value" =~ ^[0-9]+$ ]]; then
-        error "$name must be a non-negative integer. Current value: $value"
+        log::error "$LOG_COMPONENT" "$name must be a non-negative integer. Current value: $value"
         exit 1
     fi
 }
@@ -32,7 +28,7 @@ validate_non_negative_integer() {
 load_password() {
     if [[ -n "${PGPASSWORD_FILE:-}" ]]; then
         if [[ ! -r "$PGPASSWORD_FILE" ]]; then
-            error "PGPASSWORD_FILE is not readable: $PGPASSWORD_FILE"
+            log::error "$LOG_COMPONENT" "PGPASSWORD_FILE is not readable: $PGPASSWORD_FILE"
             exit 1
         fi
 
@@ -65,12 +61,12 @@ load_password
 export PGCONNECT_TIMEOUT
 
 if [[ ! -d "$BACKUP_DIR" ]]; then
-    error "Backup directory does not exist: $BACKUP_DIR"
+    log::error "$LOG_COMPONENT" "Backup directory does not exist: $BACKUP_DIR"
     exit 1
 fi
 
 if [[ ! -w "$BACKUP_DIR" ]]; then
-    error "Backup directory is not writable: $BACKUP_DIR"
+    log::error "$LOG_COMPONENT" "Backup directory is not writable: $BACKUP_DIR"
     exit 1
 fi
 
@@ -86,9 +82,9 @@ TEMP_FILE="${BACKUP_FILE}.tmp"
 
 trap cleanup_temp_file EXIT
 
-log "Starting backup."
-log "Database: ${PGDATABASE}"
-log "Host: ${PGHOST}:${PGPORT}"
+log::info "$LOG_COMPONENT" "Starting backup."
+log::info "$LOG_COMPONENT" "Database: ${PGDATABASE}"
+log::info "$LOG_COMPONENT" "Host: ${PGHOST}:${PGPORT}"
 
 if ! pg_isready \
     --host="$PGHOST" \
@@ -98,7 +94,7 @@ if ! pg_isready \
     --timeout="$PGCONNECT_TIMEOUT" \
     >/dev/null 2>&1; then
 
-    error "PostgreSQL is not ready at ${PGHOST}:${PGPORT}."
+    log::error "$LOG_COMPONENT" "PostgreSQL is not ready at ${PGHOST}:${PGPORT}."
     exit 1
 fi
 
@@ -121,15 +117,15 @@ DURATION="$((END_TIME - START_TIME))"
 
 BACKUP_SIZE="$(du -h "$BACKUP_FILE" | cut -f1)"
 
-log "Backup completed successfully."
-log "File: $BACKUP_FILE"
-log "Size: $BACKUP_SIZE"
-log "Duration: ${DURATION}s"
+log::info "$LOG_COMPONENT" "Backup completed successfully."
+log::info "$LOG_COMPONENT" "File: $BACKUP_FILE"
+log::info "$LOG_COMPONENT" "Size: $BACKUP_SIZE"
+log::info "$LOG_COMPONENT" "Duration: ${DURATION}s"
 
 date +%s > /var/lib/pg-backup/last-success
 
 if (( BACKUP_RETENTION_DAYS > 0 )); then
-    log "Removing backups older than ${BACKUP_RETENTION_DAYS} days."
+    log::info "$LOG_COMPONENT" "Removing backups older than ${BACKUP_RETENTION_DAYS} days."
 
     find "$BACKUP_DIR" \
         -type f \

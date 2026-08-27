@@ -36,6 +36,7 @@ COPY scripts/pg_backup.sh /usr/local/bin/pg-backup
 COPY scripts/pg_restore.sh /usr/local/bin/pg-restore
 COPY scripts/entrypoint.sh /usr/local/bin/pg-backup-entrypoint
 COPY scripts/healthcheck.sh /usr/local/bin/pg-backup-healthcheck
+COPY scripts/lib/logging.sh /usr/local/lib/pg-backup/logging.sh
 
 RUN chmod 0755 \
   /usr/local/bin/pg-backup \
@@ -44,6 +45,7 @@ RUN chmod 0755 \
   /usr/local/bin/pg-backup-healthcheck
 
 ENV PGPORT=5432 \
+  PG_BACKUP_LIB_DIR=/usr/local/lib/pg-backup \
   BACKUP_DIR=/backups \
   BACKUP_INTERVAL_SECONDS=3600 \
   BACKUP_RETENTION_DAYS=14 \
