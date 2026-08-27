@@ -1,0 +1,11 @@
+.env
+.env.*
+
+backups/
+*.dump
+*.sql
+
+.idea/
+.vscode/
+
+.DS_Store
