@@ -25,7 +25,9 @@ chmod 0777 "${TESTS_DIR}/backups"
 log::info "$TEST_LOG_COMPONENT" "Building backup image."
 docker compose \
     -f "$COMPOSE_FILE" \
-    build backup
+    build \
+    --build-arg VERSION="$PROJECT_VERSION" \
+    backup
 
 ##################################################
 log::info "$TEST_LOG_COMPONENT" "Starting PostgreSQL."

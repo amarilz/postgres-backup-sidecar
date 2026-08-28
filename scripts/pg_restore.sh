@@ -3,8 +3,17 @@
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${PG_BACKUP_LIB_DIR:-${SCRIPT_DIR}/lib}/logging.sh"
+LIB_DIR="${PG_BACKUP_LIB_DIR:-${SCRIPT_DIR}/lib}"
+
+source "${LIB_DIR}/logging.sh"
+source "${LIB_DIR}/version.sh"
+
 readonly LOG_COMPONENT='pg-restore'
+
+if [[ "${1:-}" == "--version" ]]; then
+    printf 'pg-restore %s\n' "$(version::get)"
+    exit 0
+fi
 
 require_env() {
     local name="$1"

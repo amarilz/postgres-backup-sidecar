@@ -3,6 +3,9 @@ FROM debian:bookworm-slim
 ENV DEBIAN_FRONTEND=noninteractive
 
 ARG POSTGRESQL_VERSION=18
+ARG VERSION=dev
+
+LABEL org.opencontainers.image.version="${VERSION}"
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
@@ -37,6 +40,8 @@ COPY scripts/pg_restore.sh /usr/local/bin/pg-restore
 COPY scripts/entrypoint.sh /usr/local/bin/pg-backup-entrypoint
 COPY scripts/healthcheck.sh /usr/local/bin/pg-backup-healthcheck
 COPY scripts/lib/logging.sh /usr/local/lib/pg-backup/logging.sh
+COPY scripts/lib/version.sh /usr/local/lib/pg-backup/version.sh
+COPY VERSION /usr/local/share/pg-backup/VERSION
 
 RUN chmod 0755 \
   /usr/local/bin/pg-backup \

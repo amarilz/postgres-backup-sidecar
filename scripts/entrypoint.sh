@@ -20,7 +20,8 @@ is_true() {
 if [[ $# -gt 0 ]]; then
     case "$1" in
         pg-backup)
-            exec /usr/local/bin/pg-backup
+            shift
+            exec /usr/local/bin/pg-backup "$@"
             ;;
 
         pg-restore)
