@@ -33,7 +33,7 @@ services:
 
       BACKUP_INTERVAL_SECONDS: 3600
       BACKUP_RETENTION_DAYS: 14
-      BACKUP_COMPRESSION: 6
+      BACKUP_COMPRESSION: gzip:6
 
       BACKUP_ON_START: "true"
       BACKUP_ON_SHUTDOWN: "true"
@@ -79,7 +79,9 @@ The backup behaviour can be configured with:
 ```text
 BACKUP_INTERVAL_SECONDS   Default: 3600
 BACKUP_RETENTION_DAYS     Default: 14
-BACKUP_COMPRESSION        Default: 6
+BACKUP_COMPRESSION        Default: gzip:6
+                          Compression configuration passed to pg_dump.
+                          Examples: gzip:6, zstd:3, lz4, none.
 BACKUP_ON_START           Default: true
 BACKUP_ON_SHUTDOWN        Default: true
 ```
