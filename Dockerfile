@@ -1,4 +1,4 @@
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -17,7 +17,7 @@ RUN apt-get update \
   && mkdir -p /etc/apt/keyrings \
   && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
   | gpg --dearmor -o /etc/apt/keyrings/postgresql.gpg \
-  && echo "deb [signed-by=/etc/apt/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" \
+  && echo "deb [signed-by=/etc/apt/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt trixie-pgdg main" \
   > /etc/apt/sources.list.d/pgdg.list \
   && apt-get update \
   && apt-get install -y --no-install-recommends \
