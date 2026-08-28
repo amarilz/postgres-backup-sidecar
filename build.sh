@@ -2,13 +2,10 @@
 
 set -Eeuo pipefail
 
-SCRIPT_DIR="$(
-    cd "$(dirname "${BASH_SOURCE[0]}")"
-    pwd
-)"
+NAMESPACE="${1:-amarilz}"
 
 PROJECT_DIR="$(
-    cd "${SCRIPT_DIR}/.."
+    cd "$(dirname "${BASH_SOURCE[0]}")"
     pwd
 )"
 
@@ -26,7 +23,17 @@ if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     exit 1
 fi
 
+IMAGE_TAG="${NAMESPACE}/postgres-backup-sidecar:${VERSION}"
+
 docker build \
     --build-arg VERSION="$VERSION" \
-    --tag "postgres-backup-sidecar:${VERSION}" \
+    --tag "$IMAGE_TAG" \
     "$PROJECT_DIR"
+
+
+read -p "Do you want to push '$IMAGE_TAG' to Docker Hub? (y/N) " -n 1 -r REPLY
+printf '\n'
+
+if [[ "$REPLY" =~ ^[Yy]$ ]]; then
+    docker image push "$IMAGE_TAG"
+fi
