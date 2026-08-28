@@ -6,6 +6,9 @@ TESTS_DIR="$(
 )"
 
 COMPOSE_FILE="${TESTS_DIR}/docker-compose.yml"
+PROJECT_VERSION="$(
+    tr -d '\r\n' < "${TESTS_DIR}/../VERSION"
+)"
 TEST_CASE_NAME="$(basename "${BASH_SOURCE[1]}")"
 TEST_LOG_COMPONENT="test:${TEST_CASE_NAME}"
 

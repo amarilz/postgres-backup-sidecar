@@ -16,25 +16,39 @@ if [[ ! -d "$CASES_DIR" ]]; then
     exit 1
 fi
 
-TEST_COUNT="$(
+##################################################
+# Discover test cases before executing them.
+#
+# Test processes must not share the stdin used by the discovery loop,
+# otherwise a child process could consume subsequent test case paths.
+
+TEST_CASES=()
+
+while IFS= read -r TEST_CASE; do
+    TEST_CASES[${#TEST_CASES[@]}]="$TEST_CASE"
+done < <(
     find "$CASES_DIR" \
         -maxdepth 1 \
         -type f \
         -name '*.sh' \
-        | wc -l \
-        | tr -d ' '
-)"
+        | sort
+)
 
-if [[ "$TEST_COUNT" -eq 0 ]]; then
+TEST_COUNT="${#TEST_CASES[@]}"
+
+if (( TEST_COUNT == 0 )); then
     log::error "$LOG_COMPONENT" "No test cases found in $CASES_DIR"
     exit 1
 fi
 
 log::info "$LOG_COMPONENT" "Found ${TEST_COUNT} test case(s)."
 
+##################################################
+# Execute test cases.
+
 PASSED=0
 
-while IFS= read -r TEST_CASE; do
+for TEST_CASE in "${TEST_CASES[@]}"; do
     TEST_NAME="$(basename "$TEST_CASE")"
 
     log::info "$LOG_COMPONENT" "Running: $TEST_NAME"
@@ -43,17 +57,14 @@ while IFS= read -r TEST_CASE; do
         log::info "$LOG_COMPONENT" "PASS: $TEST_NAME"
         PASSED=$((PASSED + 1))
     else
-        log::error "$LOG_COMPONENT" "$TEST_NAME"
+        log::error "$LOG_COMPONENT" "FAIL: $TEST_NAME"
         log::error "$LOG_COMPONENT" "Test suite stopped after first failure."
         exit 1
     fi
-done < <(
-    find "$CASES_DIR" \
-        -maxdepth 1 \
-        -type f \
-        -name '*.sh' \
-        | sort
-)
+done
+
+##################################################
+# Summary.
 
 printf '\n========================================\n'
 printf 'Test suite completed successfully.\n'
